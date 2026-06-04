@@ -318,18 +318,14 @@ class ProgressBar(tk.Canvas):
 
 
 class PixelTrafficLight(tk.Canvas):
-    """
-    Pixel-art horizontal traffic light.
-    Active bulb reflects recording state: red=working, yellow=paused, green=goal met.
-    Each 'art pixel' is CELL×CELL screen pixels for a chunky pixel-art look.
-    """
-    CELL = 4
-    GW   = 71   # grid width  → canvas = 71×4 = 284 px
-    GH   = 20   # grid height → canvas = 20×4 =  80 px
+    """3D isometric pixel-art horizontal traffic light."""
+    CELL = 3
+    GW   = 86
+    GH   = 36
 
     def __init__(self, master, **kwargs):
         super().__init__(master,
-                         width =self.GW * self.CELL,
+                         width=self.GW * self.CELL,
                          height=self.GH * self.CELL,
                          bg=BG, highlightthickness=0, bd=0, **kwargs)
         self._state = "red"
@@ -340,8 +336,6 @@ class PixelTrafficLight(tk.Canvas):
         if s != self._state:
             self._state = s
             self._draw()
-
-    # ── private helpers ──────────────────────────────────────────────────
 
     def _r(self, x0, y0, x1, y1, fill):
         c = self.CELL
@@ -361,45 +355,81 @@ class PixelTrafficLight(tk.Canvas):
 
     def _draw(self):
         self.delete("all")
-        GW, GH = self.GW, self.GH
 
-        # ── Housing ──────────────────────────────────────────────────────
-        self._r(0,   0,   GW-1, GH-1, "#141414")   # outermost shadow
-        self._r(0,   0,   GW-2, GH-2, "#202020")   # outer body
-        self._r(1,   1,   GW-3, GH-3, "#2c2c2c")   # face plate
-        self._r(1,   1,   GW-3, 2,    "#3e3e3e")   # top highlight strip
-        self._r(1,   1,   2,    GH-3, "#3a3a3a")   # left highlight strip
-        self._r(1,   GH-3,GW-3, GH-3, "#181818")   # bottom shadow strip
-        # corner rivet dots
-        for rx, ry in [(3,3),(GW-5,3),(3,GH-5),(GW-5,GH-5)]:
-            self._px(rx, ry, "#111111")
+        FX, FY, FW, FH = 2, 12, 72, 22
+        DX = 10
+        TL = FX + FY
+        TR = FX + FW - 1 + FY
+        BR = FX + FW - 1 + FY + FH - 1
 
-        # ── Light colours ─────────────────────────────────────────────────
-        R_ON="#ee4433"; R_OFF="#3c0c08"
-        Y_ON="#ddaa11"; Y_OFF="#382900"
-        G_ON="#44cc55"; G_OFF="#0b3d16"
-        RING="#1e1e1e"   # socket ring colour
+        # ── Right face (green diagonal-stripe panel) ─────────────────
+        for x in range(FX + FW, FX + FW + DX):
+            yt, yb = TR - x, BR - x
+            for y in range(yt, yb + 1):
+                stripe = (x + y) % 4 < 2
+                self._px(x, y, "#3aad4a" if stripe else "#2d8a3a")
+            self._px(x, yt, "#1d6a2a")
+            self._px(x, yb, "#1d6a2a")
+        x_re = FX + FW + DX - 1
+        for y in range(TR - x_re, BR - x_re + 1):
+            self._px(x_re, y, "#1d6a2a")
+
+        # ── Top face ─────────────────────────────────────────────────
+        for y in range(FY - DX, FY):
+            xl, xr = TL - y, TR - y
+            for x in range(xl, xr + 1):
+                self._px(x, y, "#2e2e7a")
+        y_top = FY - DX
+        for x in range(TL - y_top, TR - y_top + 1):
+            self._px(x, y_top, "#4040a0")
+        for y in range(FY - DX, FY):
+            self._px(TL - y, y, "#3838a0")
+
+        # ── Front face ───────────────────────────────────────────────
+        self._r(FX, FY, FX + FW - 1, FY + FH - 1, "#1c1c5e")
+        self._r(FX, FY, FX + FW - 1, FY + 1, "#2e2e7a")
+        self._r(FX, FY, FX + 1, FY + FH - 1, "#252578")
+        self._r(FX, FY + FH - 2, FX + FW - 1, FY + FH - 1, "#101045")
+        self._r(FX + FW - 2, FY, FX + FW - 1, FY + FH - 1, "#101045")
+        for rx, ry in [(FX+3, FY+3), (FX+FW-4, FY+3),
+                       (FX+3, FY+FH-4), (FX+FW-4, FY+FH-4)]:
+            self._px(rx, ry, "#0a0a30")
+
+        # ── Ground shadow ────────────────────────────────────────────
+        for x in range(FX + 2, FX + FW - 2):
+            self._px(x, FY + FH, "#e0ddd6")
+
+        # ── Lights ───────────────────────────────────────────────────
+        R_ON, R_OFF = "#ee4433", "#3c1818"
+        Y_ON, Y_OFF = "#ddaa11", "#383018"
+        G_ON, G_OFF = "#44cc55", "#183d1e"
 
         lc = {
             "red":    (R_ON,  Y_OFF, G_OFF),
             "yellow": (R_OFF, Y_ON,  G_OFF),
-            "green":  (R_OFF, Y_OFF, G_ON ),
+            "green":  (R_OFF, Y_OFF, G_ON),
         }[self._state]
 
-        # Three light centres — symmetric: (14+58)/2 = 36 ≈ GW//2
-        cy  = GH // 2      # = 10
-        cxs = (14, 36, 58)
+        cy = FY + FH // 2
+        cxs = (FX + FW // 6, FX + FW // 2, FX + 5 * FW // 6)
+        lr = 7
+        active_idx = {"red": 0, "yellow": 1, "green": 2}[self._state]
+        glow_colors = {"red": "#662222", "yellow": "#665500", "green": "#226633"}
+        hi_colors = {"red": "#ff9975", "yellow": "#ffe070", "green": "#80ffaa"}
 
-        for cx, col in zip(cxs, lc):
-            self._circle(cx, cy, 5, RING)   # socket ring (r=5)
-            self._circle(cx, cy, 4, col)    # bulb (r=4)
-
-        # Specular highlight on the active bulb (2×3 bright patch, top-left quad)
-        hi_map = {"red": "#ff9975", "yellow": "#ffe070", "green": "#80ffaa"}
-        hi = hi_map[self._state]
-        act = cxs[{"red": 0, "yellow": 1, "green": 2}[self._state]]
-        for dx, dy in [(-2,-2),(-1,-2),(0,-2), (-2,-1),(-1,-1)]:
-            self._px(act+dx, cy+dy, hi)
+        for i, (cx, col) in enumerate(zip(cxs, lc)):
+            is_active = i == active_idx
+            if is_active:
+                self._circle(cx, cy, lr + 2, glow_colors[self._state])
+            self._circle(cx, cy, lr + 1, "#101040")
+            self._circle(cx, cy, lr, col)
+            if is_active:
+                hi = hi_colors[self._state]
+                for ddx, ddy in [(-1,-4),(0,-4),
+                                 (-2,-3),(-1,-3),(0,-3),
+                                 (-3,-2),(-2,-2),(-1,-2),
+                                 (-3,-1),(-2,-1)]:
+                    self._px(cx+ddx, cy+ddy, hi)
 
 
 class WeekBarChart(tk.Canvas):
@@ -571,7 +601,7 @@ def _traffic_light_pixels(w, h):
     """BGRA pixel list (top-to-bottom) for a horizontal traffic-light icon."""
     cy  = h // 2
     r   = max(2, w // 8)
-    r_sq = r * r + r              # slightly inflated → rounder look at small sizes
+    r_sq = r * r + r
     cx0 = w * 3 // 16
     cx1 = w // 2
     cx2 = w * 13 // 16
@@ -581,12 +611,12 @@ def _traffic_light_pixels(w, h):
     hy0 = max(0, cy - r - 1)
     hy1 = min(h - 1, cy + r + 1)
 
-    # BGRA tuples: (B, G, R, A)
     TRAN    = (0x00, 0x00, 0x00, 0x00)
-    HOUSING = (0x22, 0x22, 0x22, 0xff)
-    CRED    = (0x33, 0x44, 0xee, 0xff)   # red   light  R=0xee G=0x44 B=0x33
-    CYLW    = (0x11, 0xaa, 0xdd, 0xff)   # yellow light R=0xdd G=0xaa B=0x11
-    CGRN    = (0x44, 0xbb, 0x33, 0xff)   # green  light R=0x33 G=0xbb B=0x44
+    BODY    = (0x5e, 0x1c, 0x1c, 0xff)   # navy #1c1c5e
+    BODY_HI = (0x7a, 0x2e, 0x2e, 0xff)   # lighter #2e2e7a
+    CRED    = (0x33, 0x44, 0xee, 0xff)
+    CYLW    = (0x11, 0xaa, 0xdd, 0xff)
+    CGRN    = (0x55, 0xcc, 0x44, 0xff)
 
     out = []
     for y in range(h):
@@ -601,7 +631,7 @@ def _traffic_light_pixels(w, h):
             elif d2 <= r_sq:
                 out.append(CGRN)
             elif hx0 <= x <= hx1 and hy0 <= y <= hy1:
-                out.append(HOUSING)
+                out.append(BODY_HI if y <= hy0 + 1 else BODY)
             else:
                 out.append(TRAN)
     return out
