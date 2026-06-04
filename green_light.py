@@ -377,7 +377,7 @@ class PixelTrafficLight(tk.Canvas):
                 b = self._cap(BX, BY, BW, BH, y)
                 if b and b[0] <= x <= b[1]:
                     for d in range(1, DX + 1):
-                        c = "#9a9a9a" if d == DX else "#808080"
+                        c = "#444444" if d == DX else "#333333"
                         self._px(x + d, y - d, c)
                     break
 
@@ -386,7 +386,7 @@ class PixelTrafficLight(tk.Canvas):
             b = self._cap(BX, BY, BW, BH, y)
             if b:
                 for d in range(1, DX + 1):
-                    self._px(b[1] + d, y - d, "#505050")
+                    self._px(b[1] + d, y - d, "#1a1a1a")
 
         # ── Front face (capsule, smooth gradient) ────────────────────
         for y in range(BY - 1, BY + BH + 1):
@@ -395,7 +395,7 @@ class PixelTrafficLight(tk.Canvas):
                 continue
             xl, xr = b
             t = max(0.0, min(1.0, (y - BY) / max(1, BH - 1)))
-            v = int(0x88 * (1 - t) + 0x48 * t)
+            v = int(0x38 * (1 - t) + 0x10 * t)
             rc = f"#{v:02x}{v:02x}{v:02x}"
             for x in range(xl, xr + 1):
                 self._px(x, y, rc)
@@ -425,7 +425,7 @@ class PixelTrafficLight(tk.Canvas):
         for i, (cx, col) in enumerate(zip(cxs, lc)):
             is_active = i == active_idx
 
-            self._circle(cx, cy, lr + 1, "#282828")
+            self._circle(cx, cy, lr + 1, "#080808")
 
             if is_active:
                 self._circle(cx, cy, lr + 2, glow_map[self._state])
