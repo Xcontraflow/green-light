@@ -1,4 +1,4 @@
-"""Green Light - work time tracker (Claude-styled UI)."""
+"""Green Light - work time tracker."""
 
 import base64 as _base64
 import ctypes
@@ -231,7 +231,7 @@ class ToggleSwitch(tk.Canvas):
 
 
 class PillToggle(tk.Canvas):
-    """Large sliding pill toggle for the main recording action."""
+    """Large sliding pill toggle with state label."""
     W = 180
     H = 52
 
@@ -265,22 +265,23 @@ class PillToggle(tk.Canvas):
         r = h // 2
         bg = ACCENT if self._value else "#9a968e"
 
-        # Pill background: left arc + centre rect + right arc
         self.create_arc(0, 0, 2*r, h, start=90,  extent=180,  fill=bg, outline=bg)
         self.create_arc(w-2*r, 0, w, h, start=270, extent=180, fill=bg, outline=bg)
         self.create_rectangle(r, 0, w-r, h, fill=bg, outline="")
 
-        # Subtle top-edge shine strip
-        shine = "#d98f75" if self._value else "#b0aba5"
-        self.create_arc(0, 0, 2*r, h//3, start=90, extent=180, fill=shine, outline=shine)
-        self.create_arc(w-2*r, 0, w, h//3, start=270, extent=180, fill=shine, outline=shine)
-        self.create_rectangle(r, 0, w-r, h//3, fill=shine, outline="")
-
-        # White handle circle
         pad = 5
         hd  = h - 2*pad
         hx  = w - hd - pad if self._value else pad
         self.create_oval(hx, pad, hx+hd, pad+hd, fill="white", outline="")
+
+        if self._value:
+            tx = (hx - r) // 2 + r
+            self.create_text(tx, h // 2, text="REC", fill="white",
+                             font=(FONT_UI, 11, "bold"))
+        else:
+            tx = hx + hd + (w - r - hx - hd) // 2
+            self.create_text(tx, h // 2, text="OFF", fill="#e0ddd6",
+                             font=(FONT_UI, 11, "bold"))
 
 
 class ProgressBar(tk.Canvas):
@@ -478,7 +479,12 @@ class WeekBarChart(tk.Canvas):
             is_today = d == today
             color = ACCENT if is_today else ACCENT_DIM
 
-            if bar_h >= 2:
+            if bar_h >= bar_w:
+                br = bar_w / 2
+                self.create_arc(x1, y_top, x2, y_top + bar_w,
+                                start=0, extent=180, fill=color, outline=color)
+                self.create_rectangle(x1, y_top + br, x2, y_bot, fill=color, outline="")
+            elif bar_h >= 2:
                 self.create_rectangle(x1, y_top, x2, y_bot, fill=color, outline="")
             else:
                 self.create_rectangle(x_center - 1.5, y_bot - 2,
@@ -499,53 +505,6 @@ class WeekBarChart(tk.Canvas):
             self.create_text(w - pad_r - 2, y_avg - 9,
                              text=f"日均 {fmt_hm(avg_v)}",
                              anchor="e", fill=TEXT2, font=(FONT_UI, 9))
-
-class TabBar(tk.Frame):
-    """Underlined text tabs (Claude.ai style)."""
-    def __init__(self, master, labels, on_change, **kwargs):
-        super().__init__(master, bg=BG, **kwargs)
-        self._on_change = on_change
-        self._active = 0
-        self._buttons = []
-
-        row = tk.Frame(self, bg=BG)
-        row.pack(anchor="w")
-        for i, label in enumerate(labels):
-            btn = tk.Label(row, text=label, bg=BG, fg=TEXT2,
-                           font=(FONT_UI, 11), padx=14, pady=10,
-                           cursor="hand2")
-            btn.pack(side="left")
-            btn.bind("<Button-1>", lambda _e, idx=i: self.select(idx))
-            self._buttons.append(btn)
-
-        self._line = tk.Canvas(self, height=2, bg=BG, highlightthickness=0)
-        self._line.pack(fill="x")
-        self._line.bind("<Configure>", lambda _e: self._draw_line())
-
-        self.select(0, fire=False)
-
-    def select(self, idx, fire=True):
-        self._active = idx
-        for i, btn in enumerate(self._buttons):
-            btn.configure(fg=TEXT if i == idx else TEXT2)
-        self.after(20, self._draw_line)
-        if fire and self._on_change:
-            self._on_change(idx)
-
-    def _draw_line(self):
-        self._line.delete("all")
-        self.update_idletasks()
-        w = self._line.winfo_width()
-        if w <= 1:
-            return
-        self._line.create_line(0, 1, w, 1, fill=BORDER, width=1)
-        if 0 <= self._active < len(self._buttons):
-            btn = self._buttons[self._active]
-            x = btn.winfo_x()
-            bw = btn.winfo_width()
-            self._line.create_rectangle(x + 14, 0, x + bw - 14, 2,
-                                        fill=ACCENT, outline=ACCENT)
-
 
 # ─── Win32 system tray (pure ctypes, no extra dependencies) ───────────────
 
@@ -1034,6 +993,11 @@ class GreenLight:
         tk.Label(inner, textvariable=self.week_summary,
                  bg=BG, fg=TEXT2, font=(FONT_UI, 10)).pack(pady=(10, 0))
 
+    @staticmethod
+    def _hover_bind(widget, enter_bg, leave_bg):
+        widget.bind("<Enter>", lambda _e: widget.configure(bg=enter_bg))
+        widget.bind("<Leave>", lambda _e: widget.configure(bg=leave_bg))
+
     def _build_bottom_nav(self, parent):
         nav = tk.Frame(parent, bg=SURFACE)
         nav.pack(fill="x", side="bottom")
@@ -1052,6 +1016,7 @@ class GreenLight:
             btn.pack(expand=True)
             btn.bind("<Button-1>", lambda _e, idx=i: self._show_page(idx))
             col.bind("<Button-1>", lambda _e, idx=i: self._show_page(idx))
+            self._hover_bind(btn, SURFACE_ALT, SURFACE)
             self._nav_btns.append(btn)
             self._nav_indicators.append(indicator)
 
@@ -1131,6 +1096,7 @@ class GreenLight:
                          font=(FONT_UI, 13), padx=12, pady=3, cursor="hand2")
         minus.pack(side="left")
         minus.bind("<Button-1>", lambda _e: step(-30))
+        self._hover_bind(minus, BORDER, SURFACE_ALT)
 
         self.target_label_var = tk.StringVar(value="")
         tk.Label(ctrl, textvariable=self.target_label_var, bg=SURFACE_ALT, fg=TEXT,
@@ -1140,6 +1106,7 @@ class GreenLight:
                         font=(FONT_UI, 13), padx=12, pady=3, cursor="hand2")
         plus.pack(side="left")
         plus.bind("<Button-1>", lambda _e: step(30))
+        self._hover_bind(plus, BORDER, SURFACE_ALT)
 
         self._refresh_target_display()
 
@@ -1182,6 +1149,7 @@ class GreenLight:
                           highlightbackground=ACCENT_DIM)
         sc_btn.pack(side="right")
         sc_btn.bind("<Button-1>", lambda _e: _do_create_shortcut())
+        self._hover_bind(sc_btn, ACCENT_DIM, ACCENT_LIGHT)
 
         # ── Data path info ────────────────────────────────────────────────
         tk.Label(inner, text="数据存储位置", bg=BG, fg=TEXT3,
