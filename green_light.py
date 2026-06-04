@@ -377,7 +377,7 @@ class PixelTrafficLight(tk.Canvas):
                 b = self._cap(BX, BY, BW, BH, y)
                 if b and b[0] <= x <= b[1]:
                     for d in range(1, DX + 1):
-                        c = "#7a7a7a" if d == DX else "#626262"
+                        c = "#9a9a9a" if d == DX else "#808080"
                         self._px(x + d, y - d, c)
                     break
 
@@ -386,7 +386,7 @@ class PixelTrafficLight(tk.Canvas):
             b = self._cap(BX, BY, BW, BH, y)
             if b:
                 for d in range(1, DX + 1):
-                    self._px(b[1] + d, y - d, "#383838")
+                    self._px(b[1] + d, y - d, "#505050")
 
         # ── Front face (capsule, smooth gradient) ────────────────────
         for y in range(BY - 1, BY + BH + 1):
@@ -395,7 +395,7 @@ class PixelTrafficLight(tk.Canvas):
                 continue
             xl, xr = b
             t = max(0.0, min(1.0, (y - BY) / max(1, BH - 1)))
-            v = int(0x68 * (1 - t) + 0x30 * t)
+            v = int(0x88 * (1 - t) + 0x48 * t)
             rc = f"#{v:02x}{v:02x}{v:02x}"
             for x in range(xl, xr + 1):
                 self._px(x, y, rc)
@@ -406,9 +406,9 @@ class PixelTrafficLight(tk.Canvas):
             self._px(x, BY + BH + 2, "#e4e2dc")
 
         # ── Lights ───────────────────────────────────────────────────
-        R_ON, R_OFF  = "#ee3322", "#3a1010"
-        Y_ON, Y_OFF  = "#ddaa11", "#3a2a08"
-        G_ON, G_OFF  = "#33cc44", "#103a14"
+        R_ON, R_OFF  = "#ff4433", "#4a1818"
+        Y_ON, Y_OFF  = "#ffbb22", "#4a3510"
+        G_ON, G_OFF  = "#44ee55", "#184a1e"
 
         lc = {
             "red":    (R_ON,  Y_OFF, G_OFF),
@@ -419,13 +419,13 @@ class PixelTrafficLight(tk.Canvas):
         cxs = (BX + BW // 6, BX + BW // 2, BX + 5 * BW // 6)
         lr = 6
         active_idx = {"red": 0, "yellow": 1, "green": 2}[self._state]
-        glow_map = {"red": "#661818", "yellow": "#665500", "green": "#186630"}
-        hi_map   = {"red": "#ff9975", "yellow": "#ffdd66", "green": "#80ffaa"}
+        glow_map = {"red": "#882222", "yellow": "#886600", "green": "#228840"}
+        hi_map   = {"red": "#ffbbaa", "yellow": "#ffee88", "green": "#aaffcc"}
 
         for i, (cx, col) in enumerate(zip(cxs, lc)):
             is_active = i == active_idx
 
-            self._circle(cx, cy, lr + 1, "#1a1a1a")
+            self._circle(cx, cy, lr + 1, "#282828")
 
             if is_active:
                 self._circle(cx, cy, lr + 2, glow_map[self._state])
