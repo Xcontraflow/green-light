@@ -26,17 +26,18 @@ CONFIG_FILE = APP_DIR / "config.json"
 
 DEFAULT_CONFIG = {"target_minutes": 480, "autostart": False}
 
-# Claude-inspired warm light palette
-BG = "#faf9f5"           # warm cream background
-SURFACE = "#ffffff"      # pure white card
-SURFACE_ALT = "#f0eee6"  # subtle alt (progress track, gridlines)
-BORDER = "#e8e6df"
+# Modern warm palette
+BG = "#f7f6f3"
+SURFACE = "#ffffff"
+SURFACE_ALT = "#eeedea"
+BORDER = "#e5e3dc"
 BORDER_STRONG = "#d4d1c7"
-TEXT = "#1f1e1d"
-TEXT2 = "#6f6c66"
-TEXT3 = "#a4a098"
-ACCENT = "#cc785c"       # Claude coral / orange
+TEXT = "#1a1a1a"
+TEXT2 = "#6b6966"
+TEXT3 = "#9e9a94"
+ACCENT = "#cc785c"
 ACCENT_DIM = "#e6b09e"
+ACCENT_LIGHT = "#fef5f0"
 RED = "#c14a3d"
 GREEN = "#5e8a3d"
 YELLOW = "#ddaa11"
@@ -187,9 +188,9 @@ def _resolve_fonts(root):
 # ─── widgets ──────────────────────────────────────────────────────────────
 
 class ToggleSwitch(tk.Canvas):
-    """Flat rectangular toggle — no arcs, pixel-perfect."""
-    WIDTH = 44
-    HEIGHT = 22
+    """Rounded pill toggle switch."""
+    WIDTH = 46
+    HEIGHT = 26
 
     def __init__(self, master, value=True, on_toggle=None, **kwargs):
         super().__init__(master, width=self.WIDTH, height=self.HEIGHT,
@@ -203,12 +204,15 @@ class ToggleSwitch(tk.Canvas):
     def _draw(self):
         self.delete("all")
         w, h = self.WIDTH, self.HEIGHT
+        r = h // 2
         bg_color = ACCENT if self._value else "#cdc9bf"
-        self.create_rectangle(0, 0, w, h, fill=bg_color, outline="")
+        self.create_arc(0, 0, 2*r, h, start=90, extent=180, fill=bg_color, outline=bg_color)
+        self.create_arc(w-2*r, 0, w, h, start=270, extent=180, fill=bg_color, outline=bg_color)
+        self.create_rectangle(r, 0, w-r, h, fill=bg_color, outline="")
         pad = 3
-        size = h - 2 * pad
-        tx = w - size - pad if self._value else pad
-        self.create_rectangle(tx, pad, tx + size, h - pad, fill="white", outline="")
+        d = h - 2 * pad
+        cx = w - d - pad if self._value else pad
+        self.create_oval(cx, pad, cx + d, pad + d, fill="white", outline="")
 
     def _click(self, _event):
         self._value = not self._value
@@ -280,8 +284,8 @@ class PillToggle(tk.Canvas):
 
 
 class ProgressBar(tk.Canvas):
-    """Flat rectangular progress bar — no arcs, pixel-perfect."""
-    def __init__(self, master, height=4, **kwargs):
+    """Rounded pill-shaped progress bar."""
+    def __init__(self, master, height=8, **kwargs):
         super().__init__(master, height=height, bg=master.cget("bg"),
                          highlightthickness=0, bd=0, **kwargs)
         self._bar_h = height
@@ -292,15 +296,24 @@ class ProgressBar(tk.Canvas):
         self._value = max(0.0, min(100.0, value))
         self._draw()
 
+    def _pill(self, x1, y1, x2, y2, r, fill):
+        self.create_arc(x1, y1, x1 + 2*r, y2, start=90, extent=180, fill=fill, outline=fill)
+        self.create_arc(x2 - 2*r, y1, x2, y2, start=270, extent=180, fill=fill, outline=fill)
+        self.create_rectangle(x1 + r, y1, x2 - r, y2, fill=fill, outline="")
+
     def _draw(self):
         self.delete("all")
         w = self.winfo_width()
+        h = self._bar_h
+        r = h // 2
         if w <= 1:
             return
-        self.create_rectangle(0, 0, w, self._bar_h, fill=SURFACE_ALT, outline="")
+        self._pill(0, 0, w, h, r, SURFACE_ALT)
         fw = (self._value / 100.0) * w
-        if fw >= 1:
-            self.create_rectangle(0, 0, fw, self._bar_h, fill=ACCENT, outline="")
+        if fw >= 2 * r:
+            self._pill(0, 0, fw, h, r, ACCENT)
+        elif fw >= 2:
+            self.create_oval(0, 0, h, h, fill=ACCENT, outline=ACCENT)
 
 
 class PixelTrafficLight(tk.Canvas):
@@ -935,88 +948,112 @@ class GreenLight:
         self._show_page(0)
 
         r.update_idletasks()
-        h = r.winfo_reqheight()
-        r.geometry(f"360x{max(h, 560)}")
+        r.geometry("380x620")
         r.resizable(False, False)
         r.after(100, lambda: _remove_maximize_btn(r))
 
     def _build_home_page(self):
         f = self.home_frame
 
+        tk.Frame(f, bg=BG, height=22).pack()
+
         # ── Pixel traffic light ───────────────────────────────────────────
-        tk.Frame(f, bg=BG, height=18).pack()
         tl_wrap = tk.Frame(f, bg=BG)
         tl_wrap.pack(anchor="center")
         self._pixel_tl = PixelTrafficLight(tl_wrap)
         self._pixel_tl.pack()
 
-        tk.Frame(f, bg=BG, height=18).pack()
+        tk.Frame(f, bg=BG, height=22).pack()
 
         # ── Status: dot + title ───────────────────────────────────────────
         status_row = tk.Frame(f, bg=BG)
         status_row.pack(anchor="center")
-        self.status_dot = tk.Canvas(status_row, width=12, height=12,
+        self.status_dot = tk.Canvas(status_row, width=14, height=14,
                                     bg=BG, highlightthickness=0, bd=0)
-        self.status_dot.pack(side="left", padx=(0, 7), pady=(2, 0))
-        self.status_dot_id = self.status_dot.create_oval(1, 1, 11, 11,
+        self.status_dot.pack(side="left", padx=(0, 8), pady=(4, 0))
+        self.status_dot_id = self.status_dot.create_oval(1, 1, 13, 13,
                                                          fill=RED, outline="")
         self.title_var = tk.StringVar(value="Red Light")
         tk.Label(status_row, textvariable=self.title_var, bg=BG, fg=TEXT,
-                 font=(FONT_UI, 18, "bold")).pack(side="left")
+                 font=(FONT_UI, 20, "bold")).pack(side="left")
 
-        tk.Frame(f, bg=BG, height=12).pack()
+        tk.Frame(f, bg=BG, height=6).pack()
 
-        # ── Session clock ─────────────────────────────────────────────────
+        # ── Session clock — large hero element ────────────────────────────
         self.session_var = tk.StringVar(value="00:00:00")
         tk.Label(f, textvariable=self.session_var,
-                 font=(FONT_MONO, 15), bg=BG, fg=TEXT).pack(anchor="center")
+                 font=(FONT_MONO, 28), bg=BG, fg=TEXT).pack(anchor="center")
 
-        tk.Frame(f, bg=BG, height=16).pack()
+        tk.Frame(f, bg=BG, height=24).pack()
 
-        # ── Today progress ────────────────────────────────────────────────
-        prog_wrap = tk.Frame(f, bg=BG)
-        prog_wrap.pack(fill="x", padx=28)
-        top_row = tk.Frame(prog_wrap, bg=BG)
+        # ── Today progress — card style ───────────────────────────────────
+        card_wrap = tk.Frame(f, bg=BG)
+        card_wrap.pack(fill="x", padx=26)
+        card = tk.Frame(card_wrap, bg=SURFACE,
+                        highlightthickness=1, highlightbackground=BORDER)
+        card.pack(fill="x")
+        card_inner = tk.Frame(card, bg=SURFACE)
+        card_inner.pack(fill="x", padx=18, pady=14)
+
+        top_row = tk.Frame(card_inner, bg=SURFACE)
         top_row.pack(fill="x")
         self.today_left = tk.StringVar(value="今日 0m / 8h")
-        tk.Label(top_row, textvariable=self.today_left, bg=BG, fg=TEXT,
+        tk.Label(top_row, textvariable=self.today_left, bg=SURFACE, fg=TEXT,
                  font=(FONT_UI, 10)).pack(side="left")
         self.today_right = tk.StringVar(value="0%")
-        tk.Label(top_row, textvariable=self.today_right, bg=BG, fg=TEXT2,
-                 font=(FONT_UI, 10)).pack(side="right")
-        self.progress = ProgressBar(prog_wrap, height=4)
-        self.progress.pack(fill="x", pady=(7, 0))
+        tk.Label(top_row, textvariable=self.today_right, bg=SURFACE, fg=ACCENT,
+                 font=(FONT_UI, 12, "bold")).pack(side="right")
+        self.progress = ProgressBar(card_inner, height=8)
+        self.progress.pack(fill="x", pady=(10, 0))
 
         tk.Frame(f, bg=BG).pack(expand=True)
 
         # ── Pill toggle ───────────────────────────────────────────────────
         self._pill_toggle = PillToggle(f, value=True,
                                        on_toggle=self._on_recording_toggle)
-        self._pill_toggle.pack(anchor="center", pady=(0, 28))
+        self._pill_toggle.pack(anchor="center", pady=(0, 30))
 
     def _build_week_page(self):
         f = self.week_frame
         inner = tk.Frame(f, bg=BG)
-        inner.pack(fill="both", expand=True, padx=12, pady=14)
-        self.bar_chart = WeekBarChart(inner)
+        inner.pack(fill="both", expand=True, padx=26, pady=20)
+
+        tk.Label(inner, text="本周概览", bg=BG, fg=TEXT,
+                 font=(FONT_UI, 14, "bold")).pack(anchor="w", pady=(0, 14))
+
+        card = tk.Frame(inner, bg=SURFACE,
+                        highlightthickness=1, highlightbackground=BORDER)
+        card.pack(fill="both", expand=True)
+        chart_pad = tk.Frame(card, bg=BG)
+        chart_pad.pack(fill="both", expand=True, padx=6, pady=8)
+
+        self.bar_chart = WeekBarChart(chart_pad)
         self.bar_chart.pack(fill="both", expand=True)
+
         self.week_summary = tk.StringVar(value="")
         tk.Label(inner, textvariable=self.week_summary,
-                 bg=BG, fg=TEXT2, font=(FONT_UI, 10)).pack(pady=(8, 0))
+                 bg=BG, fg=TEXT2, font=(FONT_UI, 10)).pack(pady=(10, 0))
 
     def _build_bottom_nav(self, parent):
-        nav = tk.Frame(parent, bg=BG)
+        nav = tk.Frame(parent, bg=SURFACE)
         nav.pack(fill="x", side="bottom")
         tk.Frame(nav, bg=BORDER, height=1).pack(fill="x")
-        row = tk.Frame(nav, bg=BG)
+        row = tk.Frame(nav, bg=SURFACE)
         row.pack(fill="x")
         self._nav_btns = []
+        self._nav_indicators = []
         for i, label in enumerate(["主页", "本周", "本月", "设置"]):
-            btn = tk.Label(row, text=label, bg=BG, fg=TEXT2,
-                           font=(FONT_UI, 10), pady=12, cursor="hand2")
-            btn.pack(side="left", expand=True, fill="x")
+            col = tk.Frame(row, bg=SURFACE)
+            col.pack(side="left", expand=True, fill="both")
+            indicator = tk.Frame(col, bg=SURFACE, height=3)
+            indicator.pack(fill="x")
+            btn = tk.Label(col, text=label, bg=SURFACE, fg=TEXT2,
+                           font=(FONT_UI, 10), pady=10, cursor="hand2")
+            btn.pack(expand=True)
             btn.bind("<Button-1>", lambda _e, idx=i: self._show_page(idx))
+            col.bind("<Button-1>", lambda _e, idx=i: self._show_page(idx))
             self._nav_btns.append(btn)
+            self._nav_indicators.append(indicator)
 
     def _show_page(self, idx):
         for p in (self.home_frame, self.week_frame,
@@ -1028,36 +1065,58 @@ class GreenLight:
             active = i == idx
             btn.configure(fg=ACCENT if active else TEXT2,
                           font=(FONT_UI, 10, "bold") if active else (FONT_UI, 10))
+            self._nav_indicators[i].configure(bg=ACCENT if active else SURFACE)
 
     def _build_month(self):
         f = self.month_frame
         inner = tk.Frame(f, bg=BG)
-        inner.pack(fill="both", expand=True, padx=16, pady=14)
+        inner.pack(fill="both", expand=True, padx=26, pady=20)
+
         self.month_title = tk.StringVar(value="")
         tk.Label(inner, textvariable=self.month_title, bg=BG, fg=TEXT,
-                 font=(FONT_UI, 12, "bold")).pack(anchor="w", pady=(0, 14))
+                 font=(FONT_UI, 14, "bold")).pack(anchor="w", pady=(0, 16))
+
+        card = tk.Frame(inner, bg=SURFACE,
+                        highlightthickness=1, highlightbackground=BORDER)
+        card.pack(fill="x")
+        card_inner = tk.Frame(card, bg=SURFACE)
+        card_inner.pack(fill="x", padx=18, pady=4)
+
         self.month_rows = []
-        for label_key in ["总工时", "工作天数", "日均", "达标天数", "最长一天"]:
-            row = tk.Frame(inner, bg=BG)
-            row.pack(fill="x", pady=5)
-            tk.Label(row, text=label_key, bg=BG, fg=TEXT2,
+        labels = ["总工时", "工作天数", "日均", "达标天数", "最长一天"]
+        for i, label_key in enumerate(labels):
+            if i > 0:
+                tk.Frame(card_inner, bg=SURFACE_ALT, height=1).pack(fill="x")
+            row = tk.Frame(card_inner, bg=SURFACE)
+            row.pack(fill="x", pady=13)
+            tk.Label(row, text=label_key, bg=SURFACE, fg=TEXT2,
                      font=(FONT_UI, 10)).pack(side="left")
             v = tk.StringVar(value="—")
-            tk.Label(row, textvariable=v, bg=BG, fg=TEXT,
-                     font=(FONT_UI, 10)).pack(side="right")
+            tk.Label(row, textvariable=v, bg=SURFACE, fg=TEXT,
+                     font=(FONT_UI, 11, "bold")).pack(side="right")
             self.month_rows.append(v)
 
     def _build_settings(self):
         f = self.settings_frame
         inner = tk.Frame(f, bg=BG)
-        inner.pack(fill="both", expand=True, padx=16, pady=14)
+        inner.pack(fill="both", expand=True, padx=26, pady=20)
 
-        target_row = tk.Frame(inner, bg=BG)
-        target_row.pack(fill="x", pady=(0, 8))
-        tk.Label(target_row, text="每日目标", bg=BG, fg=TEXT,
+        tk.Label(inner, text="设置", bg=BG, fg=TEXT,
+                 font=(FONT_UI, 14, "bold")).pack(anchor="w", pady=(0, 16))
+
+        # ── Card 1: target ────────────────────────────────────────────────
+        card1 = tk.Frame(inner, bg=SURFACE,
+                         highlightthickness=1, highlightbackground=BORDER)
+        card1.pack(fill="x", pady=(0, 12))
+        c1_inner = tk.Frame(card1, bg=SURFACE)
+        c1_inner.pack(fill="x", padx=18, pady=14)
+
+        target_row = tk.Frame(c1_inner, bg=SURFACE)
+        target_row.pack(fill="x")
+        tk.Label(target_row, text="每日目标", bg=SURFACE, fg=TEXT,
                  font=(FONT_UI, 11)).pack(side="left")
 
-        ctrl = tk.Frame(target_row, bg=SURFACE,
+        ctrl = tk.Frame(target_row, bg=SURFACE_ALT,
                         highlightthickness=1, highlightbackground=BORDER)
         ctrl.pack(side="right")
 
@@ -1068,41 +1127,43 @@ class GreenLight:
                 self._refresh_target_display()
                 save_json(CONFIG_FILE, self.config)
 
-        minus = tk.Label(ctrl, text="−", bg=SURFACE, fg=TEXT,
+        minus = tk.Label(ctrl, text="−", bg=SURFACE_ALT, fg=TEXT,
                          font=(FONT_UI, 13), padx=12, pady=3, cursor="hand2")
         minus.pack(side="left")
         minus.bind("<Button-1>", lambda _e: step(-30))
 
         self.target_label_var = tk.StringVar(value="")
-        tk.Label(ctrl, textvariable=self.target_label_var, bg=SURFACE, fg=TEXT,
+        tk.Label(ctrl, textvariable=self.target_label_var, bg=SURFACE_ALT, fg=TEXT,
                  font=(FONT_UI, 11), padx=8, pady=3, width=7).pack(side="left")
 
-        plus = tk.Label(ctrl, text="+", bg=SURFACE, fg=TEXT,
+        plus = tk.Label(ctrl, text="+", bg=SURFACE_ALT, fg=TEXT,
                         font=(FONT_UI, 13), padx=12, pady=3, cursor="hand2")
         plus.pack(side="left")
         plus.bind("<Button-1>", lambda _e: step(30))
 
         self._refresh_target_display()
 
-        tk.Frame(inner, bg=BORDER, height=1).pack(fill="x", pady=(16, 16))
+        # ── Card 2: autostart + shortcut ──────────────────────────────────
+        card2 = tk.Frame(inner, bg=SURFACE,
+                         highlightthickness=1, highlightbackground=BORDER)
+        card2.pack(fill="x", pady=(0, 12))
+        c2_inner = tk.Frame(card2, bg=SURFACE)
+        c2_inner.pack(fill="x", padx=18, pady=4)
 
-        auto_row = tk.Frame(inner, bg=BG)
-        auto_row.pack(fill="x", pady=(0, 8))
-        tk.Label(auto_row, text="开机自启动", bg=BG, fg=TEXT,
+        auto_row = tk.Frame(c2_inner, bg=SURFACE)
+        auto_row.pack(fill="x", pady=13)
+        tk.Label(auto_row, text="开机自启动", bg=SURFACE, fg=TEXT,
                  font=(FONT_UI, 11)).pack(side="left")
         self.autostart_toggle = ToggleSwitch(
             auto_row, value=self.config.get("autostart", False),
             on_toggle=self._on_autostart_toggle)
         self.autostart_toggle.pack(side="right")
 
-        tk.Label(inner, text="",
-                 bg=BG, fg=TEXT3, font=(FONT_UI, 9)).pack(anchor="w")
+        tk.Frame(c2_inner, bg=SURFACE_ALT, height=1).pack(fill="x")
 
-        tk.Frame(inner, bg=BORDER, height=1).pack(fill="x", pady=(16, 16))
-
-        shortcut_row = tk.Frame(inner, bg=BG)
-        shortcut_row.pack(fill="x", pady=(0, 4))
-        tk.Label(shortcut_row, text="桌面快捷方式", bg=BG, fg=TEXT,
+        shortcut_row = tk.Frame(c2_inner, bg=SURFACE)
+        shortcut_row.pack(fill="x", pady=13)
+        tk.Label(shortcut_row, text="桌面快捷方式", bg=SURFACE, fg=TEXT,
                  font=(FONT_UI, 11)).pack(side="left")
 
         def _do_create_shortcut():
@@ -1114,22 +1175,19 @@ class GreenLight:
                 messagebox.showerror("Green Light", f"创建失败：\n{info}")
 
         sc_btn = tk.Label(shortcut_row, text="创 建",
-                          bg=SURFACE, fg=TEXT,
+                          bg=ACCENT_LIGHT, fg=ACCENT,
                           font=(FONT_UI, 10), padx=14, pady=4,
                           cursor="hand2",
                           highlightthickness=1,
-                          highlightbackground=BORDER)
+                          highlightbackground=ACCENT_DIM)
         sc_btn.pack(side="right")
         sc_btn.bind("<Button-1>", lambda _e: _do_create_shortcut())
-        tk.Label(inner, text="",
-                 bg=BG, fg=TEXT3, font=(FONT_UI, 9)).pack(anchor="w")
 
-        tk.Frame(inner, bg=BORDER, height=1).pack(fill="x", pady=(16, 16))
-
+        # ── Data path info ────────────────────────────────────────────────
         tk.Label(inner, text="数据存储位置", bg=BG, fg=TEXT3,
-                 font=(FONT_UI, 9)).pack(anchor="w")
+                 font=(FONT_UI, 9)).pack(anchor="w", pady=(12, 2))
         tk.Label(inner, text=str(APP_DIR), bg=BG, fg=TEXT2,
-                 font=(FONT_UI, 9), wraplength=328, justify="left").pack(anchor="w")
+                 font=(FONT_UI, 9), wraplength=300, justify="left").pack(anchor="w")
 
     def _refresh_target_display(self):
         m = self.config["target_minutes"]
