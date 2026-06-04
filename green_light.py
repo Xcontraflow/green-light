@@ -318,10 +318,10 @@ class ProgressBar(tk.Canvas):
 
 
 class PixelTrafficLight(tk.Canvas):
-    """3D isometric pixel-art horizontal traffic light."""
+    """3D isometric pixel-art horizontal traffic light with visors."""
     CELL = 3
-    GW   = 86
-    GH   = 36
+    GW   = 88
+    GH   = 42
 
     def __init__(self, master, **kwargs):
         super().__init__(master,
@@ -356,11 +356,11 @@ class PixelTrafficLight(tk.Canvas):
     def _draw(self):
         self.delete("all")
 
-        FX, FY, FW, FH = 2, 12, 72, 22
+        FX, FY, FW, FH = 2, 14, 72, 26
         DX = 10
         TL = FX + FY
         TR = FX + FW - 1 + FY
-        BR = FX + FW - 1 + FY + FH - 1
+        BR = TR + FH - 1
 
         # ── Right face (green diagonal-stripe panel) ─────────────────
         for x in range(FX + FW, FX + FW + DX):
@@ -398,8 +398,9 @@ class PixelTrafficLight(tk.Canvas):
         # ── Ground shadow ────────────────────────────────────────────
         for x in range(FX + 2, FX + FW - 2):
             self._px(x, FY + FH, "#e0ddd6")
+            self._px(x, FY + FH + 1, "#ebe9e3")
 
-        # ── Lights ───────────────────────────────────────────────────
+        # ── Lights with visors ───────────────────────────────────────
         R_ON, R_OFF = "#ee4433", "#3c1818"
         Y_ON, Y_OFF = "#ddaa11", "#383018"
         G_ON, G_OFF = "#44cc55", "#183d1e"
@@ -410,18 +411,43 @@ class PixelTrafficLight(tk.Canvas):
             "green":  (R_OFF, Y_OFF, G_ON),
         }[self._state]
 
-        cy = FY + FH // 2
+        cy = 27
         cxs = (FX + FW // 6, FX + FW // 2, FX + 5 * FW // 6)
         lr = 7
         active_idx = {"red": 0, "yellow": 1, "green": 2}[self._state]
         glow_colors = {"red": "#662222", "yellow": "#665500", "green": "#226633"}
         hi_colors = {"red": "#ff9975", "yellow": "#ffe070", "green": "#80ffaa"}
 
+        VHW = lr + 3
+        VH = 4
+        VD = 3
+
+        for cx_v in cxs:
+            vx1, vx2 = cx_v - VHW, cx_v + VHW
+            vy_bot = cy - lr - 1
+            vy_top = vy_bot - VH + 1
+
+            for d in range(1, VD + 1):
+                y = vy_top - d
+                for x in range(vx1 + d, vx2 + d + 1):
+                    self._px(x, y, "#282870")
+            d = VD
+            y = vy_top - d
+            for x in range(vx1 + d, vx2 + d + 1):
+                self._px(x, y, "#3838a0")
+
+            self._r(vx1, vy_top, vx2, vy_bot, "#141452")
+            self._r(vx1, vy_top, vx2, vy_top, "#202060")
+            self._r(vx1, vy_bot, vx2, vy_bot, "#3535a0")
+            for y in range(vy_top, vy_bot + 1):
+                self._px(vx1, y, "#0c0c38")
+                self._px(vx2, y, "#0c0c38")
+
         for i, (cx, col) in enumerate(zip(cxs, lc)):
             is_active = i == active_idx
             if is_active:
                 self._circle(cx, cy, lr + 2, glow_colors[self._state])
-            self._circle(cx, cy, lr + 1, "#101040")
+            self._circle(cx, cy, lr + 1, "#0c0c35" if not is_active else "#101040")
             self._circle(cx, cy, lr, col)
             if is_active:
                 hi = hi_colors[self._state]
