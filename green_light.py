@@ -318,10 +318,10 @@ class ProgressBar(tk.Canvas):
 
 
 class PixelTrafficLight(tk.Canvas):
-    """3D isometric pixel-art horizontal traffic light with visors."""
-    CELL = 3
-    GW   = 88
-    GH   = 42
+    """3D pixel-art horizontal traffic light — dark metal housing, deep visors."""
+    CELL = 4
+    GW   = 58
+    GH   = 28
 
     def __init__(self, master, **kwargs):
         super().__init__(master,
@@ -356,54 +356,80 @@ class PixelTrafficLight(tk.Canvas):
     def _draw(self):
         self.delete("all")
 
-        FX, FY, FW, FH = 2, 14, 72, 26
-        DX = 10
-        TL = FX + FY
-        TR = FX + FW - 1 + FY
-        BR = TR + FH - 1
+        BX, BY = 3, 7
+        BW, BH = 46, 18
+        CR = 3
+        DX = 3
 
-        # ── Right face (green diagonal-stripe panel) ─────────────────
-        for x in range(FX + FW, FX + FW + DX):
-            yt, yb = TR - x, BR - x
-            for y in range(yt, yb + 1):
-                stripe = (x + y) % 4 < 2
-                self._px(x, y, "#3aad4a" if stripe else "#2d8a3a")
-            self._px(x, yt, "#1d6a2a")
-            self._px(x, yb, "#1d6a2a")
-        x_re = FX + FW + DX - 1
-        for y in range(TR - x_re, BR - x_re + 1):
-            self._px(x_re, y, "#1d6a2a")
+        C_BODY   = "#3a3a3a"
+        C_HI     = "#585858"
+        C_HI2    = "#4a4a4a"
+        C_DK     = "#252525"
+        C_VDK    = "#1a1a1a"
+        C_TOP    = "#505050"
+        C_TOP_HI = "#626262"
+        C_RIGHT  = "#2a2a2a"
+        C_EDGE   = "#1e1e1e"
 
-        # ── Top face ─────────────────────────────────────────────────
-        for y in range(FY - DX, FY):
-            xl, xr = TL - y, TR - y
-            for x in range(xl, xr + 1):
-                self._px(x, y, "#2e2e7a")
-        y_top = FY - DX
-        for x in range(TL - y_top, TR - y_top + 1):
-            self._px(x, y_top, "#4040a0")
-        for y in range(FY - DX, FY):
-            self._px(TL - y, y, "#3838a0")
+        # ── 3D right face ────────────────────────────────────────────
+        for d in range(1, DX + 1):
+            x = BX + BW + d - 1
+            for y in range(BY - d + CR, BY + BH - d - CR):
+                self._px(x, y, C_RIGHT)
 
-        # ── Front face ───────────────────────────────────────────────
-        self._r(FX, FY, FX + FW - 1, FY + FH - 1, "#1c1c5e")
-        self._r(FX, FY, FX + FW - 1, FY + 1, "#2e2e7a")
-        self._r(FX, FY, FX + 1, FY + FH - 1, "#252578")
-        self._r(FX, FY + FH - 2, FX + FW - 1, FY + FH - 1, "#101045")
-        self._r(FX + FW - 2, FY, FX + FW - 1, FY + FH - 1, "#101045")
-        for rx, ry in [(FX+3, FY+3), (FX+FW-4, FY+3),
-                       (FX+3, FY+FH-4), (FX+FW-4, FY+FH-4)]:
-            self._px(rx, ry, "#0a0a30")
+        # ── 3D top face ─────────────────────────────────────────────
+        for d in range(1, DX + 1):
+            for x in range(BX + d + CR, BX + BW + d - CR):
+                self._px(x, BY - d, C_TOP if d < DX else C_TOP_HI)
+
+        # ── Front face (rounded rect) ───────────────────────────────
+        self._r(BX + CR, BY, BX + BW - 1 - CR, BY + BH - 1, C_BODY)
+        self._r(BX, BY + CR, BX + BW - 1, BY + BH - 1 - CR, C_BODY)
+        for ccx, ccy in [(BX + CR, BY + CR),
+                          (BX + BW - 1 - CR, BY + CR),
+                          (BX + CR, BY + BH - 1 - CR),
+                          (BX + BW - 1 - CR, BY + BH - 1 - CR)]:
+            for dy in range(-CR, CR + 1):
+                for dx in range(-CR, CR + 1):
+                    if dx * dx + dy * dy <= CR * CR + CR:
+                        self._px(ccx + dx, ccy + dy, C_BODY)
+
+        # Body shading — vertical gradient
+        for x in range(BX + 1, BX + BW - 1):
+            self._px(x, BY, C_HI)
+            self._px(x, BY + 1, C_HI2)
+            self._px(x, BY + BH - 2, "#303030")
+            self._px(x, BY + BH - 1, C_DK)
+        for y in range(BY + CR, BY + BH - CR):
+            self._px(BX, y, C_HI2)
+            self._px(BX + BW - 1, y, C_DK)
+
+        # Corner rivets
+        for rx, ry in [(BX + 3, BY + 3), (BX + BW - 4, BY + 3),
+                        (BX + 3, BY + BH - 4), (BX + BW - 4, BY + BH - 4)]:
+            self._px(rx, ry, "#505050")
 
         # ── Ground shadow ────────────────────────────────────────────
-        for x in range(FX + 2, FX + FW - 2):
-            self._px(x, FY + FH, "#e0ddd6")
-            self._px(x, FY + FH + 1, "#ebe9e3")
+        for x in range(BX + 3, BX + BW - 3):
+            self._px(x, BY + BH, "#d5d2cb")
+            self._px(x, BY + BH + 1, "#e4e2dc")
 
-        # ── Lights with visors ───────────────────────────────────────
-        R_ON, R_OFF = "#ee4433", "#3c1818"
-        Y_ON, Y_OFF = "#ddaa11", "#383018"
-        G_ON, G_OFF = "#44cc55", "#183d1e"
+        # ── Mounting arm ─────────────────────────────────────────────
+        ax = BX + BW + DX
+        ay = BY + BH // 2 - DX
+        for x in range(ax, min(ax + 6, self.GW)):
+            self._px(x, ay - 1, "#555555")
+            self._px(x, ay, "#444444")
+            self._px(x, ay + 1, "#363636")
+        self._px(ax, ay - 2, "#4a4a4a")
+        self._px(ax, ay + 2, "#363636")
+        self._px(ax + 1, ay - 2, "#484848")
+        self._px(ax + 1, ay + 2, "#343434")
+
+        # ── Lights & visors ──────────────────────────────────────────
+        R_ON, R_OFF  = "#ee3322", "#280a0a"
+        Y_ON, Y_OFF  = "#ddaa11", "#28200a"
+        G_ON, G_OFF  = "#33cc44", "#0a280e"
 
         lc = {
             "red":    (R_ON,  Y_OFF, G_OFF),
@@ -411,51 +437,75 @@ class PixelTrafficLight(tk.Canvas):
             "green":  (R_OFF, Y_OFF, G_ON),
         }[self._state]
 
-        cy = 27
-        cxs = (FX + FW // 6, FX + FW // 2, FX + 5 * FW // 6)
-        lr = 7
+        cy = BY + BH // 2
+        cxs = (BX + BW // 6, BX + BW // 2, BX + 5 * BW // 6)
+        lr = 5
         active_idx = {"red": 0, "yellow": 1, "green": 2}[self._state]
-        glow_colors = {"red": "#662222", "yellow": "#665500", "green": "#226633"}
-        hi_colors = {"red": "#ff9975", "yellow": "#ffe070", "green": "#80ffaa"}
-
-        VHW = lr + 3
-        VH = 4
-        VD = 3
-
-        for cx_v in cxs:
-            vx1, vx2 = cx_v - VHW, cx_v + VHW
-            vy_bot = cy - lr - 1
-            vy_top = vy_bot - VH + 1
-
-            for d in range(1, VD + 1):
-                y = vy_top - d
-                for x in range(vx1 + d, vx2 + d + 1):
-                    self._px(x, y, "#282870")
-            d = VD
-            y = vy_top - d
-            for x in range(vx1 + d, vx2 + d + 1):
-                self._px(x, y, "#3838a0")
-
-            self._r(vx1, vy_top, vx2, vy_bot, "#141452")
-            self._r(vx1, vy_top, vx2, vy_top, "#202060")
-            self._r(vx1, vy_bot, vx2, vy_bot, "#3535a0")
-            for y in range(vy_top, vy_bot + 1):
-                self._px(vx1, y, "#0c0c38")
-                self._px(vx2, y, "#0c0c38")
+        glow_map = {"red": "#551515", "yellow": "#554410", "green": "#155525"}
+        hi_map   = {"red": "#ff8866", "yellow": "#ffdd55", "green": "#77ff99"}
+        hi2_map  = {"red": "#ffccbb", "yellow": "#ffeeaa", "green": "#bbffdd"}
 
         for i, (cx, col) in enumerate(zip(cxs, lc)):
             is_active = i == active_idx
+
+            # Deep socket recess
+            self._circle(cx, cy, lr + 2, "#0c0c0c")
+
+            # Metallic socket rim
+            ro, ri = lr + 2, lr + 1
+            ro2, ri2 = ro * ro + ro, ri * ri + ri
+            for dy in range(-ro - 1, ro + 2):
+                for dx in range(-ro - 1, ro + 2):
+                    d2 = dx * dx + dy * dy
+                    if d2 <= ro2 and d2 > ri2:
+                        shade = C_HI if dy <= -2 else C_HI2 if dy <= 0 else "#2e2e2e"
+                        self._px(cx + dx, cy + dy, shade)
+
+            # Visor hood
+            vhw = lr + 3
+            vt = cy - lr - 4
+            vb = cy - lr - 1
+            # Front face
+            self._r(cx - vhw, vt, cx + vhw, vb, "#353535")
+            # Top edge highlight
+            for x in range(cx - vhw, cx + vhw + 1):
+                self._px(x, vt, "#585858")
+            # Underside deep shadow
+            for x in range(cx - vhw + 1, cx + vhw):
+                self._px(x, vb, "#080808")
+            # 3D visor top (isometric offset)
+            for d in range(1, 3):
+                for x in range(cx - vhw + d, cx + vhw + d + 1):
+                    self._px(x, vt - d, "#525252" if d == 1 else "#5e5e5e")
+            # Side edges
+            for y in range(vt, vb + 1):
+                self._px(cx - vhw, y, C_EDGE)
+                self._px(cx + vhw, y, C_EDGE)
+
+            # Light sphere
             if is_active:
-                self._circle(cx, cy, lr + 2, glow_colors[self._state])
-            self._circle(cx, cy, lr + 1, "#0c0c35" if not is_active else "#101040")
+                self._circle(cx, cy, lr + 1, glow_map[self._state])
             self._circle(cx, cy, lr, col)
+
             if is_active:
-                hi = hi_colors[self._state]
-                for ddx, ddy in [(-1,-4),(0,-4),
-                                 (-2,-3),(-1,-3),(0,-3),
-                                 (-3,-2),(-2,-2),(-1,-2),
-                                 (-3,-1),(-2,-1)]:
-                    self._px(cx+ddx, cy+ddy, hi)
+                hi  = hi_map[self._state]
+                hi2 = hi2_map[self._state]
+                for dx, dy in [(-1, -3), (0, -3),
+                                (-2, -2), (-1, -2), (0, -2),
+                                (-3, -1), (-2, -1)]:
+                    self._px(cx + dx, cy + dy, hi)
+                for dx, dy in [(-1, -2), (0, -2), (-1, -1)]:
+                    self._px(cx + dx, cy + dy, hi2)
+                dk = glow_map[self._state]
+                for dx, dy in [(2, 2), (1, 3), (2, 1), (3, 0), (3, 1)]:
+                    if dx * dx + dy * dy <= lr * lr + lr:
+                        self._px(cx + dx, cy + dy, dk)
+            else:
+                for dy in range(-lr, lr + 1):
+                    for dx in range(-lr, lr + 1):
+                        d2 = dx * dx + dy * dy
+                        if d2 <= lr * lr + lr and d2 > (lr - 1) * (lr - 1):
+                            self._px(cx + dx, cy + dy, "#1a1a1a")
 
 
 class WeekBarChart(tk.Canvas):
@@ -638,8 +688,8 @@ def _traffic_light_pixels(w, h):
     hy1 = min(h - 1, cy + r + 1)
 
     TRAN    = (0x00, 0x00, 0x00, 0x00)
-    BODY    = (0x5e, 0x1c, 0x1c, 0xff)   # navy #1c1c5e
-    BODY_HI = (0x7a, 0x2e, 0x2e, 0xff)   # lighter #2e2e7a
+    BODY    = (0x3a, 0x3a, 0x3a, 0xff)   # dark gray #3a3a3a
+    BODY_HI = (0x58, 0x58, 0x58, 0xff)   # lighter #585858
     CRED    = (0x33, 0x44, 0xee, 0xff)
     CYLW    = (0x11, 0xaa, 0xdd, 0xff)
     CGRN    = (0x55, 0xcc, 0x44, 0xff)
