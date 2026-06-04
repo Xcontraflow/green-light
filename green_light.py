@@ -318,9 +318,9 @@ class ProgressBar(tk.Canvas):
 
 
 class PixelTrafficLight(tk.Canvas):
-    """3D pixel-art horizontal traffic light — chunky capsule, huge visors."""
-    CELL = 5
-    GW   = 50
+    """3D pixel-art horizontal traffic light."""
+    CELL = 3
+    GW   = 76
     GH   = 30
 
     def __init__(self, master, **kwargs):
@@ -353,7 +353,7 @@ class PixelTrafficLight(tk.Canvas):
                 if dx*dx + dy*dy <= r2:
                     self._px(cx+dx, cy+dy, fill)
 
-    def _cap_bounds(self, bx, by, bw, bh, y):
+    def _cap(self, bx, by, bw, bh, y):
         r = bh // 2
         yc = by + r
         dy = y - yc
@@ -366,71 +366,49 @@ class PixelTrafficLight(tk.Canvas):
     def _draw(self):
         self.delete("all")
 
-        BX, BY = 4, 11
-        BW, BH = 42, 14
-        DX = 3
+        BX, BY = 4, 8
+        BW, BH = 60, 18
+        DX = 4
         cy = BY + BH // 2
 
-        BANDS = [
-            "#5a5a5a", "#5a5a5a",
-            "#484848", "#484848",
-            "#3a3a3a", "#3a3a3a", "#3a3a3a",
-            "#3a3a3a", "#3a3a3a", "#3a3a3a",
-            "#2c2c2c", "#2c2c2c",
-            "#1e1e1e", "#1e1e1e",
-        ]
-
-        # ── 3D top face (follows capsule curve) ──────────────────────
+        # ── 3D top face ──────────────────────────────────────────────
         for x in range(BX, BX + BW):
             for y in range(BY - 1, BY + BH):
-                b = self._cap_bounds(BX, BY, BW, BH, y)
+                b = self._cap(BX, BY, BW, BH, y)
                 if b and b[0] <= x <= b[1]:
                     for d in range(1, DX + 1):
-                        c = "#666666" if d == DX else "#525252"
+                        c = "#666666" if d == DX else "#4e4e4e"
                         self._px(x + d, y - d, c)
                     break
 
-        # ── 3D right face (follows capsule curve) ────────────────────
+        # ── 3D right face ────────────────────────────────────────────
         for y in range(BY, BY + BH):
-            b = self._cap_bounds(BX, BY, BW, BH, y)
+            b = self._cap(BX, BY, BW, BH, y)
             if b:
                 for d in range(1, DX + 1):
-                    self._px(b[1] + d, y - d, "#282828")
+                    self._px(b[1] + d, y - d, "#222222")
 
-        # ── Front face — capsule with banded shading ─────────────────
+        # ── Front face (capsule, smooth gradient) ────────────────────
         for y in range(BY - 1, BY + BH + 1):
-            b = self._cap_bounds(BX, BY, BW, BH, y)
+            b = self._cap(BX, BY, BW, BH, y)
             if not b:
                 continue
             xl, xr = b
-            idx = max(0, min(len(BANDS) - 1, y - BY))
-            rc = BANDS[idx]
+            t = max(0.0, min(1.0, (y - BY) / max(1, BH - 1)))
+            v = int(0x50 * (1 - t) + 0x1a * t)
+            rc = f"#{v:02x}{v:02x}{v:02x}"
             for x in range(xl, xr + 1):
                 self._px(x, y, rc)
-            self._px(xl, y, "#4e4e4e")
-            self._px(xr, y, "#262626")
-
-        # Outline top/bottom of capsule
-        for y in range(BY - 1, BY + BH + 1):
-            b = self._cap_bounds(BX, BY, BW, BH, y)
-            b_prev = self._cap_bounds(BX, BY, BW, BH, y - 1)
-            if b and not b_prev:
-                for x in range(b[0], b[1] + 1):
-                    self._px(x, y, "#626262")
-            b_next = self._cap_bounds(BX, BY, BW, BH, y + 1)
-            if b and not b_next:
-                for x in range(b[0], b[1] + 1):
-                    self._px(x, y, "#141414")
 
         # ── Ground shadow ────────────────────────────────────────────
-        for x in range(BX + 3, BX + BW - 3):
-            self._px(x, BY + BH + 1, "#ccc9c2")
-            self._px(x, BY + BH + 2, "#dddbd5")
+        for x in range(BX + 4, BX + BW - 4):
+            self._px(x, BY + BH + 1, "#d5d2cb")
+            self._px(x, BY + BH + 2, "#e4e2dc")
 
-        # ── Lights & visors ──────────────────────────────────────────
-        R_ON, R_OFF  = "#ee3322", "#280a0a"
-        Y_ON, Y_OFF  = "#ddaa11", "#28200a"
-        G_ON, G_OFF  = "#33cc44", "#0a280e"
+        # ── Lights ───────────────────────────────────────────────────
+        R_ON, R_OFF  = "#ee3322", "#3a1010"
+        Y_ON, Y_OFF  = "#ddaa11", "#3a2a08"
+        G_ON, G_OFF  = "#33cc44", "#103a14"
 
         lc = {
             "red":    (R_ON,  Y_OFF, G_OFF),
@@ -439,80 +417,28 @@ class PixelTrafficLight(tk.Canvas):
         }[self._state]
 
         cxs = (BX + BW // 6, BX + BW // 2, BX + 5 * BW // 6)
-        lr = 4
+        lr = 6
         active_idx = {"red": 0, "yellow": 1, "green": 2}[self._state]
-        glow_map = {"red": "#551515", "yellow": "#554410", "green": "#155525"}
-        hi_map   = {"red": "#ff8866", "yellow": "#ffdd55", "green": "#77ff99"}
-        hi2_map  = {"red": "#ffccbb", "yellow": "#ffeeaa", "green": "#bbffdd"}
+        glow_map = {"red": "#661818", "yellow": "#665500", "green": "#186630"}
+        hi_map   = {"red": "#ff9975", "yellow": "#ffdd66", "green": "#80ffaa"}
 
         for i, (cx, col) in enumerate(zip(cxs, lc)):
             is_active = i == active_idx
 
-            # Deep socket
-            self._circle(cx, cy, lr + 2, "#080808")
+            self._circle(cx, cy, lr + 1, "#0c0c0c")
 
-            # Metallic socket rim
-            ro, ri = lr + 2, lr + 1
-            ro2, ri2 = ro * ro + ro, ri * ri + ri
-            for dy in range(-ro - 1, ro + 2):
-                for dx in range(-ro - 1, ro + 2):
-                    d2 = dx * dx + dy * dy
-                    if d2 <= ro2 and d2 > ri2:
-                        s = "#666666" if dy <= -2 else "#4e4e4e" if dy <= 0 else "#262626"
-                        self._px(cx + dx, cy + dy, s)
-
-            # ── VISOR — big protruding hood ──
-            vhw = 6
-            vt = cy - lr - 7
-            vb = cy - lr - 2
-            # 3D top surface (bright, very visible)
-            for d in range(1, DX + 1):
-                c = "#727272" if d == DX else "#5a5a5a"
-                for x in range(cx - vhw + d, cx + vhw + d + 1):
-                    self._px(x, vt - d, c)
-            # Front face (lighter than body for contrast)
-            self._r(cx - vhw, vt, cx + vhw, vb, "#464646")
-            # Top bright edge
-            for x in range(cx - vhw, cx + vhw + 1):
-                self._px(x, vt, "#686868")
-                self._px(x, vt + 1, "#565656")
-            # Underside — deep black shadow
-            for x in range(cx - vhw + 1, cx + vhw):
-                self._px(x, vb, "#040404")
-                self._px(x, vb - 1, "#0e0e0e")
-            # Side edges
-            for y in range(vt, vb + 1):
-                self._px(cx - vhw, y, "#1c1c1c")
-                self._px(cx + vhw, y, "#1c1c1c")
-            # Right-side 3D depth
-            for d in range(1, 3):
-                for y in range(vt, vb + 1):
-                    self._px(cx + vhw + d, y - d, "#323232")
-
-            # Light sphere
             if is_active:
-                self._circle(cx, cy, lr + 1, glow_map[self._state])
+                self._circle(cx, cy, lr + 2, glow_map[self._state])
+
             self._circle(cx, cy, lr, col)
 
             if is_active:
-                hi  = hi_map[self._state]
-                hi2 = hi2_map[self._state]
-                for dx, dy in [(-1, -2), (0, -2),
-                                (-2, -1), (-1, -1), (0, -1),
-                                (-2, 0), (-1, 0)]:
-                    self._px(cx + dx, cy + dy, hi)
-                for dx, dy in [(-1, -1), (0, -1)]:
-                    self._px(cx + dx, cy + dy, hi2)
-                dk = glow_map[self._state]
-                for dx, dy in [(1, 2), (2, 1), (2, 0)]:
-                    if dx * dx + dy * dy <= lr * lr + lr:
-                        self._px(cx + dx, cy + dy, dk)
-            else:
-                for dy in range(-lr, lr + 1):
-                    for dx in range(-lr, lr + 1):
-                        d2 = dx * dx + dy * dy
-                        if d2 <= lr * lr + lr and d2 > (lr - 1) * (lr - 1):
-                            self._px(cx + dx, cy + dy, "#1a1a1a")
+                hi = hi_map[self._state]
+                for dx, dy in [(-1,-4),(0,-4),
+                                (-2,-3),(-1,-3),(0,-3),
+                                (-3,-2),(-2,-2),(-1,-2),
+                                (-3,-1),(-2,-1)]:
+                    self._px(cx+dx, cy+dy, hi)
 
 
 class WeekBarChart(tk.Canvas):
