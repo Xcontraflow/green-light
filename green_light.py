@@ -319,9 +319,9 @@ class ProgressBar(tk.Canvas):
 
 class PixelTrafficLight(tk.Canvas):
     """3D pixel-art horizontal traffic light."""
-    CELL = 2
-    GW   = 114
-    GH   = 45
+    CELL = 3
+    GW   = 76
+    GH   = 30
 
     def __init__(self, master, **kwargs):
         super().__init__(master,
@@ -366,9 +366,9 @@ class PixelTrafficLight(tk.Canvas):
     def _draw(self):
         self.delete("all")
 
-        BX, BY = 6, 12
-        BW, BH = 90, 26
-        DX = 6
+        BX, BY = 4, 8
+        BW, BH = 60, 18
+        DX = 4
         cy = BY + BH // 2
 
         # ── 3D top face ──────────────────────────────────────────────
@@ -401,7 +401,7 @@ class PixelTrafficLight(tk.Canvas):
                 self._px(x, y, rc)
 
         # ── Ground shadow ────────────────────────────────────────────
-        for x in range(BX + 6, BX + BW - 6):
+        for x in range(BX + 4, BX + BW - 4):
             self._px(x, BY + BH + 1, "#d5d2cb")
             self._px(x, BY + BH + 2, "#e4e2dc")
 
@@ -417,7 +417,7 @@ class PixelTrafficLight(tk.Canvas):
         }[self._state]
 
         cxs = (BX + BW // 6, BX + BW // 2, BX + 5 * BW // 6)
-        lr = 9
+        lr = 6
         active_idx = {"red": 0, "yellow": 1, "green": 2}[self._state]
         glow_map = {"red": "#882222", "yellow": "#886600", "green": "#228840"}
         hi_map   = {"red": "#ffbbaa", "yellow": "#ffee88", "green": "#aaffcc"}
@@ -425,10 +425,10 @@ class PixelTrafficLight(tk.Canvas):
         for i, (cx, col) in enumerate(zip(cxs, lc)):
             is_active = i == active_idx
 
-            self._circle(cx, cy, lr + 2, "#282828")
+            self._circle(cx, cy, lr + 1, "#282828")
 
             if is_active:
-                self._circle(cx, cy, lr + 3, glow_map[self._state])
+                self._circle(cx, cy, lr + 2, glow_map[self._state])
 
             self._circle(cx, cy, lr, col)
 
