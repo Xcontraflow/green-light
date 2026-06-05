@@ -353,55 +353,62 @@ class PixelTrafficLight(tk.Canvas):
                 if dx*dx + dy*dy <= r2:
                     self._px(cx+dx, cy+dy, fill)
 
-    def _rrect(self, bx, by, bw, bh, r, fill):
-        r2 = r * r
-        for y in range(by, by + bh):
-            for x in range(bx, bx + bw):
-                rx, ry = x - bx, y - by
-                if rx < r and ry < r:
-                    if (rx - r + 0.5) ** 2 + (ry - r + 0.5) ** 2 > r2:
-                        continue
-                elif rx >= bw - r and ry < r:
-                    if (rx - bw + r + 0.5) ** 2 + (ry - r + 0.5) ** 2 > r2:
-                        continue
-                elif rx < r and ry >= bh - r:
-                    if (rx - r + 0.5) ** 2 + (ry - bh + r + 0.5) ** 2 > r2:
-                        continue
-                elif rx >= bw - r and ry >= bh - r:
-                    if (rx - bw + r + 0.5) ** 2 + (ry - bh + r + 0.5) ** 2 > r2:
-                        continue
-                self._px(x, y, fill)
+    def _cap(self, bx, by, bw, bh, y):
+        r = bh // 2
+        yc = by + r
+        dy = y - yc
+        t = r * r + r
+        if dy * dy > t:
+            return None
+        dx = int((t - dy * dy) ** 0.5)
+        return (bx + r - dx, bx + bw - 1 - r + dx)
 
     def _draw(self):
         self.delete("all")
 
-        BX, BY = 11, 7
-        BW, BH = 54, 16
-        CR = 4
+        BX, BY = 4, 8
+        BW, BH = 60, 18
+        DX = 4
         cy = BY + BH // 2
 
-        # Ground shadow
+        # ── 3D top face ──────────────────────────────────────────────
+        for x in range(BX, BX + BW):
+            for y in range(BY - 1, BY + BH):
+                b = self._cap(BX, BY, BW, BH, y)
+                if b and b[0] <= x <= b[1]:
+                    for d in range(1, DX + 1):
+                        c = "#707070" if d == DX else "#5a5a5a"
+                        self._px(x + d, y - d, c)
+                    break
+
+        # ── 3D right face ────────────────────────────────────────────
+        for y in range(BY, BY + BH):
+            b = self._cap(BX, BY, BW, BH, y)
+            if b:
+                for d in range(1, DX + 1):
+                    self._px(b[1] + d, y - d, "#3a3a3a")
+
+        # ── Front face (capsule, smooth gradient) ────────────────────
+        for y in range(BY - 1, BY + BH + 1):
+            b = self._cap(BX, BY, BW, BH, y)
+            if not b:
+                continue
+            xl, xr = b
+            t = max(0.0, min(1.0, (y - BY) / max(1, BH - 1)))
+            v = int(0x55 * (1 - t) + 0x2a * t)
+            rc = f"#{v:02x}{v:02x}{v:02x}"
+            for x in range(xl, xr + 1):
+                self._px(x, y, rc)
+
+        # ── Ground shadow ────────────────────────────────────────────
         for x in range(BX + 4, BX + BW - 4):
             self._px(x, BY + BH + 1, "#d5d2cb")
             self._px(x, BY + BH + 2, "#e4e2dc")
 
-        # Body: outline then fill
-        self._rrect(BX - 1, BY - 1, BW + 2, BH + 2, CR + 1, "#111111")
-        self._rrect(BX, BY, BW, BH, CR, "#333333")
-
-        # Top highlight stripe
-        for x in range(BX + CR, BX + BW - CR):
-            self._px(x, BY + 1, "#4d4d4d")
-            self._px(x, BY + 2, "#434343")
-
-        # Bottom edge shadow
-        for x in range(BX + CR, BX + BW - CR):
-            self._px(x, BY + BH - 2, "#282828")
-
-        # Lights
-        R_ON, R_OFF  = "#ff4433", "#331111"
-        Y_ON, Y_OFF  = "#ffbb22", "#332200"
-        G_ON, G_OFF  = "#44ee55", "#113311"
+        # ── Lights ───────────────────────────────────────────────────
+        R_ON, R_OFF  = "#ff4433", "#4a1818"
+        Y_ON, Y_OFF  = "#ffbb22", "#4a3510"
+        G_ON, G_OFF  = "#44ee55", "#184a1e"
 
         lc = {
             "red":    (R_ON,  Y_OFF, G_OFF),
@@ -410,20 +417,24 @@ class PixelTrafficLight(tk.Canvas):
         }[self._state]
 
         cxs = (BX + BW // 6, BX + BW // 2, BX + 5 * BW // 6)
-        lr = 5
+        lr = 6
         active_idx = {"red": 0, "yellow": 1, "green": 2}[self._state]
-        glow_map = {"red": "#662222", "yellow": "#664400", "green": "#226633"}
+        glow_map = {"red": "#882222", "yellow": "#886600", "green": "#228840"}
         hi_map   = {"red": "#ffbbaa", "yellow": "#ffee88", "green": "#aaffcc"}
 
         for i, (cx, col) in enumerate(zip(cxs, lc)):
             is_active = i == active_idx
+
+            self._circle(cx, cy, lr + 1, "#282828")
+
             if is_active:
                 self._circle(cx, cy, lr + 2, glow_map[self._state])
-            self._circle(cx, cy, lr + 1, "#1a1a1a")
+
             self._circle(cx, cy, lr, col)
+
             if is_active:
                 hi = hi_map[self._state]
-                thr = lr * lr * 0.4
+                thr = lr * lr * 0.45
                 for dy in range(-lr + 1, 0):
                     for dx in range(-lr + 1, 0):
                         if dx * dx + dy * dy <= thr:
